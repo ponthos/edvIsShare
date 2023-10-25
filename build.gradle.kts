@@ -4,7 +4,7 @@ plugins {
     id("org.jetbrains.intellij") version "1.14.1"
 }
 
-group = "com.example"
+group = "com.gwm.harmony"
 version = "1.0-SNAPSHOT"
 
 repositories {
@@ -42,6 +42,6 @@ tasks {
     }
 
     publishPlugin {
-        token.set(System.getenv("PUBLISH_TOKEN"))
+        token.set(System.getenv("perm:MTc4MTkyOTcyMA==.OTItODk0NA==.IMOvatmybsg3WfJdfBKxFq68U2B6vT"))
     }
 }

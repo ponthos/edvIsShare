@@ -1,4 +1,4 @@
-package com.example.demo
+package com.gwm.harmony
 
 object Config {
     var lastPath = ""

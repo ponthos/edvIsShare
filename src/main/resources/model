@@ -1,0 +1,372 @@
+let fs = require('fs');
+/**
+ * Author:AbnerMing
+ * Time:2023-10-19
+ * Desc:创建配置文件脚本
+ * */
+
+let runScript = function (cb) {
+    //读取文件信息
+    let path = require('path');
+    let dirName = path.join(__dirname); //获取跟目录
+    try {
+        //读取配置文件，查找对应的配置信息
+        let data = fs.readFileSync(dirName + "/module.harmony", 'utf-8');
+        var startModule;
+        var startModuleName;
+        var filterModuleName;
+        var startOtherShared;
+        var loadContentPage;
+        data.split(/\r?\n/).forEach((line, position) => {
+            if (position === 2) {
+                let open = line.split("=")[1];
+                startModule = open.toString();
+            }
+            if (position === 4) {
+                let moduleName = line.split("=")[1];
+                startModuleName = moduleName.toString();
+            }
+            if (position === 6) {
+                let otherName = line.split("=")[1];
+                startOtherShared = otherName.toString();
+            }
+            if (position === 8) {
+                let filterName = line.split("=")[1];
+                filterModuleName = filterName.toString();
+            }
+            if (position === 10) {
+                //load的页面信息
+                let loadPage = line.split("=")[1];
+                loadContentPage = loadPage.toString();
+            }
+        });
+        //开启组件化之后，单独的模块可以独立运行
+        //不开启组件化，那么entry可以独立运行，其他均不可,需要一一更改配置文件
+        traverseFolder(dirName, startModule.indexOf("true") !== -1,
+            startModuleName, startOtherShared, filterModuleName, loadContentPage);
+
+    } catch (e) {
+        console.log("发生了错误，请检查配置文件是否存在，或反馈至AbnerMing");
+    }
+
+};
+
+function traverseFolder(folderPath, isModule, startModuleName,
+                        startOtherShared, filterModuleName, loadContentPage) {
+    const items = fs.readdirSync(folderPath);
+
+    items.forEach(item => {
+        let dir = folderPath + "/" + item;
+        const stats = fs.statSync(dir);
+        if (stats.isDirectory()) {
+            let hvigorFilePath = dir + "/hvigorfile.ts";
+            fs.readFile(hvigorFilePath, "utf8", (err, dataStr) => {
+                if (err) {
+                    return;
+                }
+                if (isModule) {
+                    //开启组件化
+                    //把当前的组件改为运行状态
+                    if (item == startModuleName) {
+
+                        let moduleName = item.substring(0, 1).toUpperCase()
+                            + item.substring(1, item.length)
+
+                        //修改为可运行状态
+                        let entryHvigorFile = getEntryHvigorFile();
+                        //读取string.json文件，增加label
+                        let jsonName = dir + "/src/main/resources/base/element/string.json";
+                        fs.readFile(jsonName, "utf8", (err, dataStr) => {
+                            if (err) {
+                                return;
+                            }
+                            let obj = JSON.parse(dataStr);
+                            let array = obj["string"];
+                            let label = { "name": "shared_label", "value": item };
+                            let isSharedLabel = false;
+
+                            for (var i = 0; i < array.length; i++) {
+                                let name = array[i]["name"];
+                                if (name == "shared_label") {
+                                    isSharedLabel = true;
+                                    break;
+                                }
+                            }
+
+                            if (!isSharedLabel) {
+                                array.push(label);
+                            }
+                            writeContent(jsonName, JSON.stringify(obj));
+                            //进一步更改json5文件
+                            let json5 = dir + "/src/main/module.json5";
+                            writeContent(json5, getEntryModuleJson5(item, moduleName));
+                        });
+
+                        if (loadContentPage == null || loadContentPage == "") {
+                            //为空的时候才去创建
+                            //创建Index.ets文件
+                            let indexPath = dir + "/src/main/ets/pages";
+                            const indexItem = fs.readdirSync(indexPath);
+                            let isHaveIndex = false;
+                            indexItem.forEach(item => {
+                                if (item == "Index.ets") {
+                                    //证明存在
+                                    isHaveIndex = true;
+                                }
+                            });
+
+                            if (!isHaveIndex) {
+                                //不存在，就要去创建
+                                writeContent(indexPath + "/Index.ets", getIndex());
+                            }
+                        }
+                        //创建Ability文件
+                        let etsPath = dir + "/src/main/ets/" + item + "ability/" + moduleName + "Ability.ts";
+                        fs.mkdir(dir + "/src/main/ets/" + item + "ability", function (err) {
+                            if (err) {
+                                writeContent(etsPath, getAbility(moduleName, loadContentPage));
+                                return;
+                            }
+                            //写入文件
+                            writeContent(etsPath, getAbility(moduleName, loadContentPage));
+                        });
+
+                    } else {
+                        //非当前的组件，需要改为动态包模式吗，根据配置文件来改变，有两种是永远不能改变的
+                        if (item != "entry" && filterModuleName.indexOf(item) == -1 && startOtherShared) {
+                            //把其他的模块都改成动态包，不能运行
+                            let moduleJson5 = getSharedModuleJson5(item);
+                            let hvigorFile = getSharedHvigorFile();
+                            writeContent(hvigorFilePath, hvigorFile);
+                            writeContent(dir + "/src/main/module.json5", moduleJson5);
+                        }
+                    }
+                } else {
+                    //主模块和需要过滤的模块不进行动态包设置
+                    if (item != "entry" && filterModuleName.indexOf(item) == -1) {
+                        //把其他的模块都改成动态包，不能运行
+                        let moduleJson5 = getSharedModuleJson5(item);
+                        let hvigorFile = getSharedHvigorFile();
+                        writeContent(hvigorFilePath, hvigorFile);
+                        writeContent(dir + "/src/main/module.json5", moduleJson5);
+                    }
+                }
+            });
+        }
+    });
+}
+
+/**
+ * 写入内容
+ * @param path
+ * @param content
+ */
+function writeContent(path, content) {
+    fs.writeFile(path, content, function (err) {
+
+    });
+}
+
+/**
+ * 修改Json5文件[动态包]
+ */
+function getSharedModuleJson5(moduleName) {
+    return "{\n" +
+        "  \"module\": {\n" +
+        "    \"name\": \"" + moduleName + "\",\n" +
+        "    \"type\": \"shared\",\n" +
+        "    \"description\": \"$string:shared_desc\",\n" +
+        "    \"deviceTypes\": [\n" +
+        "      \"phone\",\n" +
+        "      \"tablet\"\n" +
+        "    ],\n" +
+        "    \"deliveryWithInstall\": true,\n" +
+        "    \"pages\": \"$profile:main_pages\"\n" +
+        "  }\n" +
+        "}";
+}
+
+/**
+ * 修改Json5文件[静态包]
+ */
+function getHarModuleJson5(moduleName) {
+    return "{\n" +
+        "  \"module\": {\n" +
+        "    \"name\": \"" + moduleName + "\",\n" +
+        "    \"type\": \"har\",\n" +
+        "    \"deviceTypes\": [\n" +
+        "      \"default\",\n" +
+        "      \"tablet\"\n" +
+        "    ]\n" +
+        "  }\n" +
+        "}\n"
+}
+
+/**
+ * 修改Json5文件[运行包]
+ */
+function getEntryModuleJson5(name, moduleName) {
+    return "{\n" +
+        "  \"module\": {\n" +
+        "    \"name\": \"" + name + "\",\n" +
+        "    \"type\": \"entry\",\n" +
+        "    \"description\": \"$string:shared_desc\",\n" +
+        "    \"mainElement\": \"" + moduleName + "Ability\",\n" +
+        "    \"deviceTypes\": [\n" +
+        "      \"phone\",\n" +
+        "      \"tablet\"\n" +
+        "    ],\n" +
+        "    \"deliveryWithInstall\": true,\n" +
+        "    \"installationFree\": false,\n" +
+        "    \"pages\": \"$profile:main_pages\",\n" +
+        "    \"abilities\": [\n" +
+        "      {\n" +
+        "        \"name\": \"MineAbility\",\n" +
+        "        \"srcEntry\": \"./ets/" + name + "ability/" + moduleName + "Ability.ts\",\n" +
+        "        \"description\": \"$string:shared_desc\",\n" +
+        "        \"icon\": \"$media:icon\",\n" +
+        "        \"label\": \"$string:shared_label\",\n" +
+        "        \"startWindowIcon\": \"$media:icon\",\n" +
+        "        \"startWindowBackground\": \"$color:white\",\n" +
+        "        \"exported\": true,\n" +
+        "        \"skills\": [\n" +
+        "          {\n" +
+        "            \"entities\": [\n" +
+        "              \"entity.system.home\"\n" +
+        "            ],\n" +
+        "            \"actions\": [\n" +
+        "              \"action.system.home\"\n" +
+        "            ]\n" +
+        "          }\n" +
+        "        ]\n" +
+        "      }\n" +
+        "    ]\n" +
+        "  }\n" +
+        "}";
+}
+
+/**
+ * 修改HvigorFile文件[动态包]
+ */
+function getSharedHvigorFile() {
+    return "import { hspTasks } from '@ohos/hvigor-ohos-plugin';\n" +
+        "\n" +
+        "export default {\n" +
+        "    system: hspTasks,  /* Built-in plugin of Hvigor. It cannot be modified. */\n" +
+        "    plugins:[]         /* Custom plugin to extend the functionality of Hvigor. */\n" +
+        "}"
+}
+
+/**
+ * 修改HvigorFile文件[运行包]
+ */
+function getEntryHvigorFile() {
+    return "import { hapTasks } from '@ohos/hvigor-ohos-plugin';\n" +
+        "\n" +
+        "export default {\n" +
+        "    system: hapTasks,  /* Built-in plugin of Hvigor. It cannot be modified. */\n" +
+        "    plugins:[]         /* Custom plugin to extend the functionality of Hvigor. */\n" +
+        "}";
+}
+
+/**
+ * 修改HvigorFile文件[静态包]
+ */
+function getHarHvigorFile() {
+    return "import { harTasks } from '@ohos/hvigor-ohos-plugin';\n" +
+        "\n" +
+        "export default {\n" +
+        "    system: harTasks,  /* Built-in plugin of Hvigor. It cannot be modified. */\n" +
+        "    plugins:[]         /* Custom plugin to extend the functionality of Hvigor. */\n" +
+        "}";
+}
+
+/**
+ * 修改获取Ability模板
+ */
+function getAbility(name, loadContentPage) {
+    if (loadContentPage == null || loadContentPage == "") {
+        loadContentPage = "pages/Index";
+    }
+    return "import AbilityConstant from '@ohos.app.ability.AbilityConstant';\n" +
+        "import hilog from '@ohos.hilog';\n" +
+        "import UIAbility from '@ohos.app.ability.UIAbility';\n" +
+        "import Want from '@ohos.app.ability.Want';\n" +
+        "import window from '@ohos.window';\n" +
+        "\n" +
+        "export default class " + name +
+        "Ability extends UIAbility {\n" +
+        "  onCreate(want: Want, launchParam: AbilityConstant.LaunchParam) {\n" +
+        "    hilog.info(0x0000, 'testTag', '%{public}s', 'Ability onCreate');\n" +
+        "  }\n" +
+        "\n" +
+        "  onDestroy() {\n" +
+        "    hilog.info(0x0000, 'testTag', '%{public}s', 'Ability onDestroy');\n" +
+        "  }\n" +
+        "\n" +
+        "  onWindowStageCreate(windowStage: window.WindowStage) {\n" +
+        "    // Main window is created, set main page for this ability\n" +
+        "    hilog.info(0x0000, 'testTag', '%{public}s', 'Ability onWindowStageCreate');\n" +
+        "\n" +
+        "    windowStage.loadContent('" + loadContentPage + "', (err, data) => {\n" +
+        "      if (err.code) {\n" +
+        "        hilog.error(0x0000, 'testTag', 'Failed to load the content. Cause: %{public}s', JSON.stringify(err) ?? '');\n" +
+        "        return;\n" +
+        "      }\n" +
+        "      hilog.info(0x0000, 'testTag', 'Succeeded in loading the content. Data: %{public}s', JSON.stringify(data) ?? '');\n" +
+        "    });\n" +
+        "  }\n" +
+        "\n" +
+        "  onWindowStageDestroy() {\n" +
+        "    // Main window is destroyed, release UI related resources\n" +
+        "    hilog.info(0x0000, 'testTag', '%{public}s', 'Ability onWindowStageDestroy');\n" +
+        "  }\n" +
+        "\n" +
+        "  onForeground() {\n" +
+        "    // Ability has brought to foreground\n" +
+        "    hilog.info(0x0000, 'testTag', '%{public}s', 'Ability onForeground');\n" +
+        "  }\n" +
+        "\n" +
+        "  onBackground() {\n" +
+        "    // Ability has back to background\n" +
+        "    hilog.info(0x0000, 'testTag', '%{public}s', 'Ability onBackground');\n" +
+        "  }\n" +
+        "}\n";
+}
+
+/**
+ * 修改获取Index模板
+ */
+function getIndex() {
+    return "@Entry\n" +
+        "@Component\n" +
+        "struct Index {\n" +
+        "  @State message: string = 'Hello World'\n" +
+        "\n" +
+        "  build() {\n" +
+        "    Row() {\n" +
+        "      Column() {\n" +
+        "        Text(this.message)\n" +
+        "          .fontSize(50)\n" +
+        "          .fontWeight(FontWeight.Bold)\n" +
+        "      }\n" +
+        "      .width('100%')\n" +
+        "    }\n" +
+        "    .height('100%')\n" +
+        "  }\n" +
+        "}";
+}
+
+function log(message) {
+    console.log(message);
+}
+
+//执行runScript
+let startTask = function () {
+    runScript(function () {
+        //它可以是0或1,0表示没有任何类型的故障结束进程，而1表示由于某种故障而结束进程
+        process.exit(1);
+    })
+}
+// 调用startTask方法
+startTask();

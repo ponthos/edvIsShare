@@ -1,4 +1,4 @@
-package com.example.demo
+package com.gwm.harmony
 
 import com.intellij.openapi.actionSystem.LangDataKeys
 import com.intellij.openapi.fileChooser.FileChooser
@@ -119,7 +119,7 @@ class FileChooserResult(private val project: Project) {
         // 设置是否允许多选
         fileChooser.setMultiSelectionEnabled(true)
 
-//        // 添加可用的文件过滤器（FileNameExtensionFilter 的第一个参数是描述, 后面是需要过滤的文件扩展名 可变参数）
+        // 添加可用的文件过滤器（FileNameExtensionFilter 的第一个参数是描述, 后面是需要过滤的文件扩展名 可变参数）
 //        fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("image(*.jpg, *.png, *.gif)", "jpg", "png", "gif"));
         // 设置默认使用的文件过滤器
         fileChooser.setFileFilter(FileNameExtensionFilter("image(*.jpg, *.png, *.gif)", "jpg", "png", "gif"))

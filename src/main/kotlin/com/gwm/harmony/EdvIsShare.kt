@@ -1,4 +1,4 @@
-package com.example.demo
+package com.gwm.harmony
 
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -46,13 +46,13 @@ class EdvIsShare :AnAction() {
      * 判断temp文件是否存有，上次组件化文件，还原并对本次进行修改
      */
     fun checkLastUpdate():Boolean{
-        if (Config.lastPath!="")
+        if (Config.lastPath !="")
             return false
-        if(Config.lastHvigorFile!="")
+        if(Config.lastHvigorFile !="")
             return false
-        if(Config.lastModule!="")
+        if(Config.lastModule !="")
             return false
-        if(Config.lastIndexPage!="")
+        if(Config.lastIndexPage !="")
             return false
         return true
     }
@@ -63,7 +63,6 @@ class EdvIsShare :AnAction() {
     fun shareHasExist(indexPath: PsiDirectory, e: AnActionEvent):Boolean{
         var rootPath = getAppPath(e)
         var psipath=indexPath.toString().replace("PsiDirectory:","")
-        rootPath=rootPath.substring(1,rootPath.length)
         var fileHFile = File("$psipath\\hvigorfile.ts")
         var fileModule= File("$psipath\\src\\main\\module.json5")
 

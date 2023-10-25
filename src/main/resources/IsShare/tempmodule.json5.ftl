@@ -1,6 +1,6 @@
 {
   "module": {
-    "name": "library",
+    "name": "${module_name}",
     "type": "shared",
     "description": "$string:shared_desc",
     "deviceTypes": [
