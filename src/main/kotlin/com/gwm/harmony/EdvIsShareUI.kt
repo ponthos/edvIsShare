@@ -45,7 +45,7 @@ class EdvIsShareUI(var e: AnActionEvent, directory: PsiDirectory) : DialogWrappe
         init();
         title = "创建"
 
-        e.project!!.baseDir.refresh(false, true)
+        e.project!!.projectFile?.refresh(false, true)
 
     }
 
@@ -72,7 +72,7 @@ class EdvIsShareUI(var e: AnActionEvent, directory: PsiDirectory) : DialogWrappe
      * @param e
      */
     private fun refreshProject(e: AnActionEvent, strAlarm: String) {
-        e.project!!.baseDir.refresh(false, true)
+        e.project!!.projectFile?.refresh(false, true)
         showNotify(strAlarm,e.project)
     }
 

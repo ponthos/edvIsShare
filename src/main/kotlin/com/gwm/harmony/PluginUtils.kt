@@ -339,16 +339,16 @@ fun Any.jGridLayout(rows: Int, columns: Int, init: JPanel.() -> Unit = {}): JPan
 }
 
 
-/**
- * generate a icon component
- */
-fun Any.jIcon(iconPath: String, init: JLabel.() -> Unit = {}): JLabel {
-    val icon = IconLoader.getIcon(iconPath)
-    return JBLabel(icon).also {
-        it.init()
-        checkAddView(this, it)
-    }
-}
+///**
+// * generate a icon component
+// */
+//fun Any.jIcon(iconPath: String, init: JLabel.() -> Unit = {}): JLabel {
+//    val icon = IconLoader.getIcon(iconPath)
+//    return JBLabel(icon).also {
+//        it.init()
+//        checkAddView(this, it)
+//    }
+//}
 
 /**
  * generate a border layout which for easy adding inner views
