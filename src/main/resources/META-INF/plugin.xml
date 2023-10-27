@@ -27,7 +27,7 @@
     <extensions defaultExtensionNs="com.intellij">
         <notificationGroup id="Custom Notification Group"
                            displayType="BALLOON"
-                           key="1781929720@qq.com"/>
+                           key="notification.group.name"/>
     </extensions>
     <actions>
         <action id="com.gwm.harmony.EdvIsShare" class="com.gwm.harmony.EdvIsShare" text="EdvIsShare"
