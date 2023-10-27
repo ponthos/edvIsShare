@@ -13,7 +13,7 @@
     <!-- Description of the plugin displayed on the Plugin Page and IDE Plugin Manager.
          Simple HTML elements (text formatting, paragraphs, and lists) can be added inside of <![CDATA[ ]]> tag.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-description -->
-    <description>Hongmeng componentized code switching environment, can automatically select the main interface,
+    <description>HarmonyOS Componentization Modification.HarmonyOS componentized code switching environment, can automatically select the main interface,
         select modules during use, automatically determine whether
         the current module environment supports modification, and support restoration after
         modification</description>
